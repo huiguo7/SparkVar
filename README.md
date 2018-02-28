@@ -1,12 +1,12 @@
 # SparkVar
 SparkVar is designed for swiftly processing large amounts of DNA sequencing data for read alignment and variant calling. SparkVar creates an EMR cluster in AWS to process sequencing data stored in S3.
 
-Dependencies:
+### Dependencies:
 1. An AWS account (https://aws.amazon.com)
 2. boto3 installed on local machine (https://boto3.readthedocs.io/en/latest)
 3. python3 (https://www.python.org/downloads)
 
-How to run SparkVar:
+### How to run SparkVar:
 1. Copy the "application" folder under a S3 object path, specified with "--pipeline" option.
    SparkVar and its dependencies will be installed automatically during bootstrap stage when launching EMR.    
 
@@ -17,7 +17,7 @@ How to run SparkVar:
    Run "emr-launch.py -h" for a number of input options. Make sure to include "/" at the end of each specified s3 object path. An example comamnd is included in the "example" folder.
 
 
-Avro schema:  
+### Avro schema:  
 {  
     “name”: “FASTQ”,  
     “type”: “record”,  
