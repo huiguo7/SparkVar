@@ -19,7 +19,7 @@ SparkVar is designed for swiftly processing large amounts of DNA sequencing data
 
 ### Avro schema:  
 {  
--    “name”: “FASTQ”,  
+\    “name”: “FASTQ”,  
     “type”: “record”,  
     “fields”: [  
          {“name”: “header”, “type”: “string”, “default”: “”},  
