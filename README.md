@@ -22,10 +22,10 @@ Avro schema:
     “name”: “FASTQ”,
     “type”: “record”,
     “fields”: [
-     {“name”: “header”, “type”: “string”, “default”: “”},
-     {“name”: “seq1”,   “type”: “string”, “default”: “”},
-     {“name”: “qual1”,  “type”: “string”, “default”: “”},
-     {“name”: “seq2”,   “type”: “string”, “default”: “”},
-     {“name”: “qual2”,  “type”: “string”, “default”: “”},
+         {“name”: “header”, “type”: “string”, “default”: “”},
+         {“name”: “seq1”,   “type”: “string”, “default”: “”},
+         {“name”: “qual1”,  “type”: “string”, “default”: “”},
+         {“name”: “seq2”,   “type”: “string”, “default”: “”}, 
+         {“name”: “qual2”,  “type”: “string”, “default”: “”},
     ]
 }
