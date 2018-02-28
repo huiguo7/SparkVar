@@ -17,7 +17,7 @@ How to run SparkVar:
    Run "emr-launch.py -h" for a number of input options. Make sure to include "/" at the end of each specified s3 object path. An example comamnd is included in the "example" folder.
 
 
-Avro schema:
+Avro schema:  
 {
     “name”: “FASTQ”,
     “type”: “record”,
