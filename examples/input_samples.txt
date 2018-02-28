@@ -1,0 +1,3 @@
+s3://path/to/sample1.avro
+s3://path/to/sample2.avro
+s3://path/to/sample3.avro
