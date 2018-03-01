@@ -1,6 +1,6 @@
 #!/bin/bash
 
-../emr-launch.py --job_id SparkVar_test \
+python3 ../emr-launch.py --job_id SparkVar_test \
                  --samples input_samples.txt \
                  --reference Zea_mays.AGPv4.fa \
                  --ref_s3_path s3://dv-thes-ext/maize_ref/ \
