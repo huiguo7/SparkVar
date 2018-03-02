@@ -573,7 +573,8 @@ def get_min_partitions(executor_memory, executor_cores):
     }
     instance_executors = int(math.floor((0.9 * instance_types[node_type]['memory']/1024) / executor_memory )) - 2
     min_partitions = instance_executors * nodes * executor_cores
-    return min_partitions
+    total_number_cores = instance_types[node_type]['vcpu'] * nodes
+    return min_partitions, total_number_cores
 
 # Main routine
 def main(start_time):
@@ -608,7 +609,7 @@ def main(start_time):
     executor_cores = int(SparkConf().get("spark.executor.cores"))
 
     # Make sure the AVRO file is partitioned into at least as many parts as the number of cluster executors
-    min_partitions = get_min_partitions(executor_memory, executor_cores)
+    min_partitions, total_number_cores = get_min_partitions(executor_memory, executor_cores)
 
     # Get list of files to process
     input_samples = args['sample']
@@ -636,7 +637,7 @@ def main(start_time):
     sam_rdd.cache()
 
     # range partition into chromosome segments
-    sam_partition_rdd = partition_rdd(sam_rdd, chroms, chrom_size, npartitions=tpartitions)
+    sam_partition_rdd = partition_rdd(sam_rdd, chroms, chrom_size, npartitions=total_number_cores*4)
 
     # genotype calling
     snp_files = snp_call_pipe(sam_partition_rdd, args, gts, '/mnt/'+args['ref'], header, prefix)
