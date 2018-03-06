@@ -6,6 +6,21 @@ SparkVar is designed for swiftly processing large amounts of DNA sequencing data
 2. boto3 installed on local machine (https://boto3.readthedocs.io/en/latest)
 3. python3 (https://www.python.org/downloads)
 
+### Convert fastq to avro
+$./fastq2avro --help
+Usage: fastq2avro [options]
+
+  -1, --read1 <read1-file>
+                           A FASTQ file containing read1 either gzipped or uncompressed
+  -2, --read2 <read2-file>
+                           A FASTQ file containing read2 either gzipped or uncompressed
+  --help                   prints usage
+
+Examples...
+$fastq2avro --read1 r1.fastq.gz > out.avro
+$fastq2avro --read1 r1.fastq.gz --read2 r2.fastq.gz > out.avro
+
+
 ### How to run SparkVar:
 1. Copy the "application" folder under a S3 object path, specified with "--pipeline" option.
    SparkVar and its dependencies will be installed automatically during bootstrap stage when launching EMR.    
