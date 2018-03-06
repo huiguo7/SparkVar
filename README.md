@@ -12,7 +12,7 @@ Usage: fastq2avro [options]
   
   -1, --read1 \<read1-file\>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A FASTQ file containing read1 either gzipped or uncompressed  
   -2, --read2 \<read2-file\>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A FASTQ file containing read2 either gzipped or uncompressed  
-  --help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prints usage  
+  --help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prints usage  
   
 Examples...  
 $fastq2avro --read1 r1.fastq.gz > out.avro  
@@ -32,13 +32,13 @@ $fastq2avro --read1 r1.fastq.gz --read2 r2.fastq.gz > out.avro
 
 ### Avro schema:  
 {  
-    “name”: “FASTQ”,  
-    “type”: “record”,  
-    “fields”: [  
-         {“name”: “header”, “type”: “string”, “default”: “”},  
-         {“name”: “seq1”,   “type”: “string”, “default”: “”},  
-         {“name”: “qual1”,  “type”: “string”, “default”: “”},  
-         {“name”: “seq2”,   “type”: “string”, “default”: “”},  
-         {“name”: “qual2”,  “type”: “string”, “default”: “”},  
-    ]  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;“name”: “FASTQ”,  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;“type”: “record”,  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;“fields”: [  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “header”, “type”: “string”, “default”: “”},  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “seq1”,   “type”: “string”, “default”: “”},  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “qual1”,  “type”: “string”, “default”: “”},  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “seq2”,   “type”: “string”, “default”: “”},  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “qual2”,  “type”: “string”, “default”: “”},  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]  
 }  
