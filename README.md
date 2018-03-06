@@ -10,8 +10,8 @@ SparkVar is designed for swiftly processing large amounts of DNA sequencing data
 $./fastq2avro --help  
 Usage: fastq2avro [options]  
   
-  -1, --read1 <read1-file>  A FASTQ file containing read1 either gzipped or uncompressed  
-  -2, --read2 <read2-file>  A FASTQ file containing read2 either gzipped or uncompressed  
+  -1, --read1 \<read1-file\>\tA FASTQ file containing read1 either gzipped or uncompressed  
+  -2, --read2 \<read2-file\>\tA FASTQ file containing read2 either gzipped or uncompressed  
   --help                      prints usage  
   
 Examples...  
