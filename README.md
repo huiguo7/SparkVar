@@ -20,8 +20,7 @@ $fastq2avro --read1 r1.fastq.gz --read2 r2.fastq.gz > out.avro
 
 
 ### How to run SparkVar:
-1. Copy the "application" folder under a S3 object path, specified with "--pipeline" option.
-   SparkVar and its dependencies will be installed automatically during bootstrap stage when launching EMR.    
+1. Copy the "application" folder under a S3 object path (specified with "--pipeline" option). 
 
 2. Option to convert reads in fastq format to avro.
    SparkVar takes avro files as input (see avro schema). If your reads data are stored in fastq format, use "fastq2avro" to convert them to avro. You may use ec2-launch.py to create a number of ec2 instances for this step. 
