@@ -10,9 +10,9 @@ SparkVar is designed for swiftly processing large amounts of DNA sequencing data
 $./fastq2avro --help  
 Usage: fastq2avro [options]  
   
-  -1, --read1 \<read1-file\>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A FASTQ file containing read1 either gzipped or uncompressed  
-  -2, --read2 \<read2-file\>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A FASTQ file containing read2 either gzipped or uncompressed  
-  --help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prints usage  
+  -1, --read1 \<read1-file\> A FASTQ file containing read1 either gzipped or uncompressed  
+  -2, --read2 \<read2-file\> A FASTQ file containing read2 either gzipped or uncompressed  
+  --help prints usage  
   
 Examples...  
 $fastq2avro --read1 r1.fastq.gz > out.avro  
@@ -20,7 +20,7 @@ $fastq2avro --read1 r1.fastq.gz --read2 r2.fastq.gz > out.avro
 
 
 ### How to run SparkVar:
-1. Copy the "application" folder under a S3 object path (specified with "--pipeline" option). 
+1. Copy the "application" folder under a S3 object path (specified with "--pipeline" option in emr-launch.py). 
 
 2. Option to convert reads in fastq format to avro.
    SparkVar takes avro files as input (see avro schema). If your reads data are stored in fastq format, use "fastq2avro" to convert them to avro. You may use ec2-launch.py to create a number of ec2 instances for this step. 
@@ -31,13 +31,13 @@ $fastq2avro --read1 r1.fastq.gz --read2 r2.fastq.gz > out.avro
 
 ### Avro schema:  
 {  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;“name”: “FASTQ”,  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;“type”: “record”,  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;“fields”: [  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “header”, “type”: “string”, “default”: “”},  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “seq1”,   “type”: “string”, “default”: “”},  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “qual1”,  “type”: “string”, “default”: “”},  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “seq2”,   “type”: “string”, “default”: “”},  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{“name”: “qual2”,  “type”: “string”, “default”: “”},  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]  
+“name”: “FASTQ”,  
+“type”: “record”,  
+“fields”: [  
+{“name”: “header”, “type”: “string”, “default”: “”},  
+{“name”: “seq1”,   “type”: “string”, “default”: “”},  
+{“name”: “qual1”,  “type”: “string”, “default”: “”},  
+{“name”: “seq2”,   “type”: “string”, “default”: “”},  
+{“name”: “qual2”,  “type”: “string”, “default”: “”},  
+]  
 }  
