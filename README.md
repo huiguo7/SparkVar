@@ -12,7 +12,7 @@ Usage: fastq2avro [options]
   
   -1, --read1 \<read1-file\>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A FASTQ file containing read1 either gzipped or uncompressed  
   -2, --read2 \<read2-file\>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A FASTQ file containing read2 either gzipped or uncompressed  
-  --help                      prints usage  
+  --help&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prints usage  
   
 Examples...  
 $fastq2avro --read1 r1.fastq.gz > out.avro  
