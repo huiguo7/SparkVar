@@ -1,172 +1,190 @@
 #!/usr/bin/env python
 
 
-import sys, os, re, time
-from optparse import OptionParser
+import sys
+import os
+import re
+import time
+from datetime import datetime
+from optparse import OptionParser, OptionGroup
+from BasePair import BasePair
 
-from yzUtil import system_run
-from yzSample import Sample
-from yzBASE import *
-from yzSAM import *
+PROGRAM_NAME = 'call_variants'
 
-usage = "usage: %prog [options]"
-parser = OptionParser(usage=usage)
-parser.add_option("-i","--input",dest="input",
-                  help="Input is a file containing a list of bam files.")
-parser.add_option("-b","--bam",dest="bam",
-                  help="Direct input bam files from command line, comma delimited. Exclusive with -i.")
-parser.add_option("-f","--refasta",dest="refasta",
+
+### system call ###
+def syscall(cmd, verbose):
+    if verbose: sys.stderr.write('(%s) [%s] #cmd: %s\n' % (str(datetime.now()), PROGRAM_NAME, cmd))
+    retval = os.system(cmd)
+    if retval:
+        if verbose: sys.stderr.write('[%s] ERROR: system call failed: %s\n' % (PROGRAM_NAME, cmd))
+        sys.exit(1)
+
+
+### parse args and options ###
+def parse_args():
+    defaults = {'map_qual':30, 'min_cov':3, 'min_purity':0.98, \
+                'hets_cov':10, 'hets_purity':0.7, 'indel_cov':1, 'indel_purity':0.5, 'indel_perc':0.1}
+    usage = "usage: %prog [options]"
+    parser = OptionParser(usage=usage)
+    parser.add_option("-b","--bam_files",dest="bam_files",
+                  help="Option to take input bam files from command line, comma delimited. Exclusive with -B.")
+    parser.add_option("-B","--bam_list",dest="bam_list",
+                  help="Option to take the inputs from a file of bam filename list, exclusive with -b.")
+    parser.add_option("-f","--refasta",dest="refasta",
                   help="Required input reference fasta filename, need to have fai index file with it.")
-parser.add_option("-o","--output",dest="output",
+    parser.add_option("-o","--output",dest="output",
                   help="Option to set output filename, defaults to stdout.")
-parser.add_option("-r","--region",dest="region",
-                  help="Option to call SNPs in this region only.")
-parser.add_option("-u","--qual",dest="qual",type='int',default=30,
-                  help="Option to set the minimum mapping quality for SNP call. Defaults to 30.")
-parser.add_option("-V","--vcf",dest="vcf",
-                  default=False, action="store_true",
-                  help="Option to output vcf files. Defaults to call/coverage/purity format.")
-parser.add_option("-I","--indel",dest="indel",
-                  default=False, action="store_true",
-                  help="Option to call INDELs too.")
-parser.add_option("-H","--hets",dest="hets",
-                  default=False, action="store_true",
-                  help="Option to call heterozygous SNPs too.")
-parser.add_option("-S","--pos",dest="pos_file",
-                  help="Option to provide the SNP positions from a file to get genotype values. \
+    parser.add_option("-v","--verbose",dest="verbose",default=False, action="store_true")
+
+    bam = OptionGroup(parser, 'Samtools mpileup Options')
+    bam.add_option("-r","--region",dest="region",
+                  help="Option to call variants in this region only.")
+    bam.add_option("-u","--qual",dest="qual",type='int',default=defaults['map_qual'],
+                  help="Option to set the minimum mapping quality, defaults to %s." % defaults['map_qual'])
+    bam.add_option("","--pos",dest="pos_file",
+                  help="Option to provide the variant positions from a file to get genotype values. \
 The file needs to be tab delimited with two columns: seqid and coordinates.")
-parser.add_option("-a","--param",dest="param",
-                  help="Option to set samtools mpileup parameters.")
-parser.add_option("-c","--min_cov",dest="cov",
-                  default=3, type='int',
-                  help="Option to set the minimum coverage for snp call, defaults to 3.")
-parser.add_option("-p","--min_purity",dest="purity",
-                  default=0.98, type='float',
-                  help="Option to set the minimum purity for snp call, defaults to 0.98.")
-parser.add_option("-d","--hets_cov",dest="hets_cov",
-                  default=10, type='int',
-                  help="Option to set the minimum coverage for hets call, defaults to 10.")
-parser.add_option("-q","--hets_purity",dest="hets_purity",
-                  default=0.7, type='float',
-                  help="Option to set the maximum purity for hets call, defaults to 0.7.")
-parser.add_option("-C","--indel_cov",dest="indel_cov",
-                  default=1, type='int',
-                  help="Option to set the minimum coverage for indel call, defaults to 1.")
-parser.add_option("-P","--indel_purity",dest="indel_purity",
-                  default=0.5, type='float',
-                  help="Option to set the minimum purity for indel call, defaults to 0.5.")
-parser.add_option("-Q","--indel_perc",dest="indel_perc",
-                  default=0.1, type='float',
-                  help="Option to set the minimum percent for displaying an indel allele, \
-defaults to 0.1.")
-parser.add_option("-s","--bsa",dest="bsa",
-                  default=False, action="store_true",
-                  help="Option to print Varients for Bulk Segregation Analysis (BSA) with \
-the purity given by option -q.")
-parser.add_option("-v","--verbose",dest="verbose",
-                  default=False, action="store_true")
+    bam.add_option("","--param",dest="param",
+                  help="Option to set additional samtools mpileup parameters.")
+    parser.add_option_group(bam)
 
-(options, args) = parser.parse_args()
-if not options.refasta or (options.input and options.bam):
-    parser.print_help()
-    sys.exit(1)
+    method = OptionGroup(parser, 'Variant Call Method Options')
+    method.add_option("","--indel",dest="call_indel",default=False, action="store_true",
+                  help="Option to call INDELs too.")
+    method.add_option("","--hets",dest="call_hets",default=False, action="store_true",
+                  help="Option to call heterozygous SNPs too.")
+    method.add_option("","--vcf",dest="vcf",default=False,action="store_true",
+                  help="Option to use bcftools to call variants, defaults to call by samtools mpileup.")
+    parser.add_option_group(method)
+
+    cutoff = OptionGroup(parser, 'Variant Call Cutoff Options')
+    cutoff.add_option("","--min_cov",dest="cov",default=defaults['min_cov'],type='int',
+                  help="Option to set the minimum coverage for snp call, defaults to %s." % defaults['min_cov'])
+    cutoff.add_option("","--min_purity",dest="purity",default=defaults['min_purity'],type='float',
+                  help="Option to set the minimum purity for snp call, defaults to %s." % defaults['min_purity'])
+    cutoff.add_option("","--hets_cov",dest="hets_cov",default=defaults['hets_cov'],type='int',
+                  help="Option to set the minimum coverage for hets call, defaults to %s." % defaults['hets_cov'])
+    cutoff.add_option("","--hets_purity",dest="hets_purity",default=defaults['hets_purity'],type='float',
+                  help="Option to set the maximum purity for hets call, defaults to %s." % defaults['hets_purity'])
+    cutoff.add_option("","--indel_cov",dest="indel_cov",default=defaults['indel_cov'],type='int',
+                  help="Option to set the minimum coverage for indel call, defaults to %s." % defaults['indel_cov'])
+    cutoff.add_option("","--indel_purity",dest="indel_purity",default=defaults['indel_purity'],type='float',
+                  help="Option to set the minimum purity for indel call, defaults to %s." % defaults['indel_purity'])
+    cutoff.add_option("","--indel_perc",dest="indel_perc",default=defaults['indel_perc'],type='float',
+                  help="Option to set the minimum percent for displaying an indel allele, defaults to %s." % defaults['indel_perc'])
+    parser.add_option_group(cutoff)
 
 
-def get_samples():
-    samples = []
-    if options.bam: 
-        rec = options.bam.split(',')
-        for i in range(0, len(rec)):
-#            name = "sample%s" % (i+1)
-            filename = rec[i]
-            val = filename.split('/')
-            name = '.'.join((val[-1].split('.'))[:-1])
+    (options, args) = parser.parse_args()
+    if not options.refasta or (options.bam_list and options.bam):
+        parser.print_help()
+        sys.exit(1)
+
+    return options, args
+
+
+
+#####################################
+## Get Sample BAM files
+#####################################
+def get_samples(bamfiles, bam_list, delimit='\t'):
+    samples = {}
+    if bamfiles: 
+        for filename in bamfiles.split(','):
+            name = os.path.splitext(os.path.basename(filename))[0]
             if os.path.exists(filename):
-                samples.append(Sample(name,filename,'BAM'))
+                samples[name] = filename
             else:
-                sys.stderr.write("[bam2vcf.py] WARNING: skip %s, because it does not exist.\n" % filename)
+                sys.stderr.write("[%s] WARNING: skip %s, because it does not exist.\n" % (PROGRAM_NAME,filename))
     else:
-        if options.input: in_file = open(options.input, 'r')
+        if bam_list: in_file = open(bam_list, 'r')
         else: in_file = sys.stdin
-        line = in_file.readline()
-        while line != "":
+        for line in in_file.readlines():
             if line[0] != '#':
-                rec = line[:-1].split('\t')
-                filename = rec[1]
+                rec = line[:-1].split(delimit)
+                (name, filename) = rec[0], rec[1]
                 if os.path.exists(filename):
-                    samples.append(Sample(rec[0],filename,'BAM'))
+                    samples[name] = filename
                 else:
-                    sys.stderr.write("[bam2vcf.py] WARNING: skip %s, because it does not exist.\n" % filename)
-            line = in_file.readline()
-        if options.input: in_file.close()
+                    sys.stderr.write("[%s] WARNING: skip %s, because it does not exist.\n" % (PROGRAM_NAME,filename))
+        if bam_list: in_file.close()
     return samples
 
 
-def header_write(outfile, samples):
-    outfile.write("#SeqID\tPosition\tType\tRefbase")
-    for i in range(0, len(samples)):
-        name = samples[i].name
-        outfile.write("\t%s_Basecall\t%s_Cov\t%s_Purity" % (name,name,name))
-        if options.bsa: outfile.write("\t%s_ACGT" % name)
-    outfile.write("\n")
+
+## Print Header
+def HeaderLine(names, delimit):
+    fields = ['CHR','COORDINATE','TYPE','REFBASE']
+    for i in range(0, len(names)):
+        name = names[i]
+        fields += ['%s_BASECALL'%name,'%s_COV'%name,'%s_PURITY'%name]
+    return delimit.join(fields)+'\n'
 
 
-def bam_snpcall(samples, out_file):
+######################################
+# variants call by samtools mpileup
+######################################
+
+class Variant_Cutoffs:
+    def __init__(self):
+        self.min_cov = 3           # minimum coverage for homo SNP call
+        self.min_purity = 0.98     # minimum purity for homo SNP call
+        self.hets_cov = 10         # minimum coverage for hets SNP call
+        self.hets_purity = 0.7     # minimum purity for hets SNP call
+        self.indel_cov = 1         # minimum coverage for INDEL call
+        self.indel_purity = 0.5    # minimum purity for INDEL call
+        self.indel_perc = 0.1      # minimum percent for displaying an INDEL allele
+
+    def load_from_options(self, options):
+        self.min_cov = options.cov
+        self.min_purity = options.purity
+        self.hets_cov = options.hets_cov
+        self.hets_purity = options.hets_purity
+        self.indel_cov = options.indel_cov
+        self.indel_purity = options.indel_purity
+        self.indel_perc = options.indel_perc
+
+
+def variant_call_by_mpileup(samples, mpileup_cmd, out_file, cutoffs, call_hets, call_indel, delimit, verbose):
+    names = samples.keys()
+    names.sort()
+
     if out_file: outfile = open(out_file, 'w')
     else: outfile = sys.stdout
-    header_write(outfile, samples)
-    cmd = "samtools mpileup -f %s -q %s" % (options.refasta,options.qual)
-    if options.region: cmd += " -r %s" % options.region
-    if options.param: cmd += " %s" % options.param
-    for i in range(0, len(samples)):
-        cmd += " %s" % samples[i].file
-    if options.verbose: sys.stderr.write("%s\n" % cmd)
+    outfile.write(HeaderLine(names, delimit))
+    cmd = mpileup_cmd
+    for i in range(0, len(names)):
+        cmd += " %s" % samples[names[i]]
+    if verbose: sys.stderr.write("%s\n" % cmd)
     infile = os.popen("%s" % cmd)
     line = infile.readline()
     while line != "":
         if line[0] != '#':
-            basepair = SAMpileupLineParser(line)
-            if options.bsa and basepair.is_varient(options.cov, options.hets_purity): 
-                basepair.write_varient(outfile)
-            elif basepair.is_snp(options.cov, options.purity):
-                basepair.write_snp(outfile,options.hets_cov,options.hets_purity)
-            elif options.hets and basepair.is_hets(options.hets_cov, options.hets_purity):
-                basepair.write_hets(outfile,options.hets_cov,options.hets_purity)
-            if options.indel and basepair.is_indel(options.indel_cov, options.indel_purity):
-                basepair.write_indel(outfile,options.indel_perc)
+            rec = line[:-1].split(delimit)
+            basepair = BasePair(rec)
+            if basepair.is_snp(cutoffs.min_cov, cutoffs.min_purity):
+                basepair.write_snp(outfile, cutoffs.hets_cov, cutoffs.hets_purity)
+            elif call_hets and basepair.is_hets(cutoffs.hets_cov, cutoffs.hets_purity):
+                basepair.write_hets(outfile, cutoffs.hets_cov, cutoffs.hets_purity)
+            if call_indel and basepair.is_indel(cutoffs.indel_cov, cutoffs.indel_purity):
+                basepair.write_indel(outfile, cutoffs.indel_perc)
         line = infile.readline()
     if out_file: outfile.close()
     return
     
 
-def sample_bcfcall(bamfile, vcffile):
-    cmd = "samtools mpileup -uf %s" % options.refasta
-    if options.region: cmd += " -r %s" % options.region
-    if options.param:  cmd += " %s" % options.param
-    cmd += " %s | bcftools call -v -m " % (bamfile)
-    cmd += " - -o %s" % vcffile
-    system_run(cmd)
 
-
-def union_snps(vcfs, outfile):
-    tmp_file = "%s.tmp" % outfile
-    for i in range(0, len(vcfs)):
-        cmd = "cat %s | grep -v \"#\"" % vcfs[i]
-        if not options.hets: cmd += " | grep \"1/1\""
-        cmd += " >> %s" % tmp_file
-        system_run(cmd)
-    cmd = "cat %s | cut -f1,2 | sort | uniq > %s" % (tmp_file, outfile)
-    system_run(cmd)
-    os.remove(tmp_file)
-    
-
-def GetSNPpositions(pos_file):
+########################################
+#### Use mpileup to do snarping
+########################################
+def GetSNPpositions(pos_file, delimit='\t'):
     positions = {}
     pos_fp = open(pos_file, 'rb')
     pos_line = pos_fp.readline()
     while pos_line != '':
         if pos_line[0] != '#':
-            rec = pos_line[:-1].split('\t')
+            rec = pos_line[:-1].split(delimit)
             seqid = rec[0]
             coord = int(rec[1])
             if not seqid in positions: positions[seqid] = []
@@ -178,118 +196,181 @@ def GetSNPpositions(pos_file):
     return positions
 
 
-def GetRefbases(pos_file, refasta):
+def GetRefbases(pos_file, refasta, verbose):
     refbases = {}
-    cmd = '/mnt/fasta_extract %s -p -i %s -l 0 | /mnt/fastaParser.py -a convert' % (refasta, pos_file)
-    if options.verbose: sys.stderr.write(cmd + '\n')
+    cmd = 'fasta_extract %s -p -i %s -l 0' % (refasta, pos_file)
+    if verbose: sys.stderr.write(cmd + '\n')
     fp = os.popen(cmd)
     line = fp.readline()
+    snp_id = None
     while line != '':
-        rec = line[:-1].split('\t')
-        pos = rec[0]
-        refbase = rec[1]
-        refbases[pos] = refbase
+        if line[0] == '>':
+            snp_id = line[1:-1].strip()
+            line = fp.readline()
+            refbases[snp_id] = line[0]
         line = fp.readline()
     fp.close()
     return refbases
 
         
-def PrintEmptyLine(outfile, seqid, coord, num_samples, refbases, delimit):
-    outfile.write('%s%s%s%s%s' % (seqid, delimit, coord, delimit, 'SNP'))
+def EmptyLine(seqid, coord, num_samples, refbases, delimit):
+    fields = [seqid, str(coord), 'UNK']
     pos = '%s:%s' % (seqid,coord)
     if pos in refbases: refbase = refbases[pos]
     else: refbase = 'N'
-    outfile.write('%s%s' % (delimit, refbase))
-    for i in xrange(num_samples):
-        outfile.write('%s%s' % (delimit, '.'))
-        outfile.write('%s%s' % (delimit, 0))
-        outfile.write('%s%.1f' % (delimit, 0.0))
-    outfile.write('\n')
+    fields += [refbase]
+    for i in range(0, num_samples):
+        fields += ['.','0','0.0']
+    return delimit.join(fields)+'\n'
 
 
-def snarp(samples, pos_file, outfile):
-    if options.vcf: cmd = "samtools mpileup -uf %s" % options.refasta
-    else: cmd = "samtools mpileup -f %s" % options.refasta
-    if options.region: cmd += " -r %s" % options.region
-    if options.qual:   cmd += " -q %s" % options.qual
-    if options.param:  cmd += " %s" % options.param
-    cmd += " -l %s" % pos_file
-    for i in range(0, len(samples)):
-        cmd += " %s" % samples[i].file
-    if options.vcf: 
-        cmd += " | bcftools view -"
-        if outfile: cmd += " > %s" % outfile
-        system_run(cmd)
-    else:
-        # Get SNP positions and refbases
-        positions = GetSNPpositions(pos_file)
-        refbases  = GetRefbases(pos_file, options.refasta)
-        # Get coverage data from mpileup
-        if options.verbose: sys.stderr.write("%s\n" % cmd)
-        if outfile: out_fpt = open(outfile, 'wb')
-        else: out_fpt = sys.stdout
-        header_write(out_fpt, samples)
-        visited = {}
-        for seq_id in positions: visited[seq_id] = False
-        fpt = os.popen(cmd)
-        pos_seq_id = ''
-        pos_line_id = 0
-        line = fpt.readline()
-        while line != '':
-            if line[0] != '#':
-                basepair = SAMpileupLineParser(line)
-                if basepair.seqid != pos_seq_id:
-                    if pos_seq_id:
-                        while pos_line_id < len(positions[pos_seq_id]):
-                            PrintEmptyLine(out_fpt, pos_seq_id, positions[pos_seq_id][pos_line_id], len(samples), refbases, '\t')
-                            pos_line_id += 1
-                    pos_seq_id = basepair.seqid
-                    pos_line_id = 0
-                    visited[pos_seq_id] = True
-                while basepair.pos > positions[basepair.seqid][pos_line_id]:
-                    PrintEmptyLine(out_fpt, basepair.seqid, positions[basepair.seqid][pos_line_id], len(samples), refbases, '\t')
-                    pos_line_id += 1
-                if basepair.pos == positions[basepair.seqid][pos_line_id]:
-                    pos_line_id += 1
-                if options.bsa: basepair.write_varient(out_fpt)
-                else: basepair.write(out_fpt, options.hets_cov, options.hets_purity)
-            line = fpt.readline()
-        if pos_seq_id != '':
-            while pos_line_id < len(positions[pos_seq_id]):
-                PrintEmptyLine(out_fpt, pos_seq_id, positions[pos_seq_id][pos_line_id], len(samples), refbases, '\t')
+def snarp(samples, refasta, pos_file, mpileup_cmd, out_filename, delimit, verbose):
+    # Get SNP positions and refbases
+    positions = GetSNPpositions(pos_file)
+    refbases  = GetRefbases(pos_file, refasta, verbose)
+
+    # Initialize
+    visited = {}
+    for seq_id in positions: visited[seq_id] = False
+    pos_seq_id, pos_line_id = '', 0
+    names = samples.keys()
+    names.sort()
+
+    # open output file
+    if out_filename: outfile = open(out_filename, 'w')
+    else: outfile = sys.stdout
+    outfile.write(HeaderLine(names, delimit))
+
+    # call samtools mpileup
+    cmd = mpileup_cmd + " -l %s" % pos_file
+    for i in range(0, len(names)):
+        cmd += " %s" % samples[names[i]]
+    infile = os.popen(cmd)
+    if verbose: sys.stderr.write("[%s] #cmd: %s\n" % (PROGRAM_NAME,cmd))
+
+    # parse mpileup lines to call variants
+    line = infile.readline()
+    while line != '':
+        if line[0] != '#':
+            basepair = BasePair(line[:-1].split(delimit))
+            if basepair.seqid != pos_seq_id:
+                if pos_seq_id:
+                    while pos_line_id < len(positions[pos_seq_id]):
+                        outfile.write(EmptyLine(pos_seq_id, positions[pos_seq_id][pos_line_id], len(names), refbases, delimit))
+                        pos_line_id += 1
+                pos_seq_id = basepair.seqid
+                pos_line_id = 0
+                visited[pos_seq_id] = True
+            while basepair.pos > positions[basepair.seqid][pos_line_id]:
+                outfile.write(EmptyLine(basepair.seqid, positions[basepair.seqid][pos_line_id], len(names), refbases, delimit))
                 pos_line_id += 1
-        for seq_id in visited:
-            if visited[seq_id] == False:
-                for i in xrange(len(positions[seq_id])):
-                    PrintEmptyLine(out_fpt, seq_id, positions[seq_id][i], len(samples), refbases, '\t')
-                visited[seq_id] = True
-        if outfile: out_fpt.close()
+            if basepair.pos == positions[basepair.seqid][pos_line_id]:
+                pos_line_id += 1
+            basepair.write(outfile, delimit)
+        line = infile.readline()
+
+    # print for variants with no read coverage
+    if pos_seq_id != '':
+        while pos_line_id < len(positions[pos_seq_id]):
+            outfile.write(EmptyLine(pos_seq_id, positions[pos_seq_id][pos_line_id], len(names), refbases, delimit))
+            pos_line_id += 1
+    for seq_id in visited:
+        if visited[seq_id] == False:
+            for i in range(0, len(positions[seq_id])):
+                outfile.write(EmptyLine(seq_id, positions[seq_id][i], len(names), refbases, delimit))
+            visited[seq_id] = True
+
+    if out_filename: outfile.close()
     return
 
 
-def vcf_snpcall(samples, outfile):
+
+########################################
+#### Use bcftools to call variants  ####
+########################################
+
+# get the union of variant coordinates list
+def vcf_union_snps(vcfs, outfile, call_hets, verbose):
+    tmp_file = "%s.tmp" % outfile
+    for i in range(0, len(vcfs)):
+        cmd = "cat %s | grep -v \"#\"" % vcfs[i]
+        if not call_hets: cmd += " | grep \"1/1\""
+        cmd += " >> %s" % tmp_file
+        syscall(cmd, verbose)
+    cmd = "cat %s | cut -f1,2 | sort | uniq > %s" % (tmp_file, outfile)
+    syscall(cmd, verbose)
+    os.remove(tmp_file)
+    
+
+# call variants by bcftool
+def variant_call_by_bcftools(samples, mpileup_cmd, out_file, call_hets, delimit, verbose):
     vcfs = []
-    for i in range(0, len(samples)):
-        sample = samples[i]
-        vcfile_name = "%s.vcf" % sample.name
-        vcfs.append(vcfile_name)
-        sample_bcfcall(sample.file, vcfile_name)
-    if outfile: pos_file = "%s.pos" % outfile
-    else: pos_file = "%s.pos" % int(time.time())
-    union_snps(vcfs, pos_file)
-    snarp(samples, pos_file, outfile)
+    names = samples.keys()
+    names.sort()
+    for i in range(0, len(names)):
+        name = names[i]
+        vcf_name = "%s.vcf" % name
+        vcfs.append(vcf_name)
+        cmd = mpileup_cmd + ' %s | bcftools call -v -m - -o %s' % (samples[name],vcf_name)
+        syscall(cmd, verbose)
+
+    if out_file: pos_file = "%s.pos" % out_file
+    else: pos_file = "vcf.%s.pos" % int(time.time())
+    vcf_union_snps(vcfs, pos_file, call_hets, verbose)
+
+    #### Use bcftools to do snarping
+    cmd = mpileup_cmd + " -l %s" % pos_file
+    for i in range(0, len(names)):
+        cmd += " %s" % samples[names[i]]
+    cmd += " | bcftools view -"
+    if out_file: cmd += " > %s" % out_file
+    syscall(cmd, verbose)
+
+    ## remove temporary files
     os.remove(pos_file)
     for filename in vcfs: os.remove(filename)
 
+    return
 
+
+#####################################################
+### Return samtools mpileup cmd
+#####################################################
+def get_mpileup_cmd(refasta, region, min_qual, vcf, other_params):
+    cmd = 'samtools mpileup '
+    if vcf: cmd += '-uf %s' % refasta
+    else:   cmd += '-f %s' % refasta
+    if min_qual: cmd += ' -q %s' % min_qual
+    if region:   cmd += ' -r %s' % region
+    if other_params: cmd += ' %s' % other_params
+    return cmd
+
+
+##############################
+# Main 
+##############################
 def main():
-    samples = get_samples()
-    if options.pos_file:
-        snarp(samples, options.pos_file, options.output)
-    elif options.vcf:
-        vcf_snpcall(samples,options.output)
+    options, args = parse_args()
+    delimit = '\t'
+    refasta = options.refasta
+    out_file = options.output
+    pos_file = options.pos_file
+    vcf = options.vcf
+    verbose = options.verbose
+
+    samples = get_samples(options.bam_files, options.bam_list)
+    mpileup_cmd = get_mpileup_cmd(refasta, options.region, options.qual, vcf, options.param)
+
+    if pos_file:
+        snarp(samples, refasta, pos_file, mpileup_cmd, out_file, delimit, verbose)
+    elif vcf:
+        variant_call_by_bcftools(samples, mpileup_cmd, out_file, options.call_hets, delimit, verbose)
     else:
-        bam_snpcall(samples,options.output)
+        cutoffs = Variant_Cutoffs()
+        cutoffs.load_from_options(options)
+        variant_call_by_mpileup(samples, mpileup_cmd, out_file, cutoffs, options.call_hets, options.call_indel, delimit, verbose)
+
+    return
 
 
 if __name__ == '__main__':

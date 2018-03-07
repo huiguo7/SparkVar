@@ -1,17 +1,15 @@
-#!/opt/common/compbio/bin/python
-
 """
-yzBASE.py
+BasePair.py
 
   A module for base pair infomration.
   
-  Version 1.0 -
-  Version 1.3 - added the function for return indels caught in bamfiles
-  Version 1.5 - fixed a bug in indel calling
+  Author: Yun Zhang (yun.zhang@pioneer.com)
+
 """
 
-import sys, os, re 
-from yzIUPAC import *
+import sys
+import os
+import re 
 
 
 ACGT = ['A', 'C', 'G', 'T', 'N', 'a', 'c', 'g', 't', 'n']
@@ -36,16 +34,6 @@ class SampleBase:
         self.minor = ''
         self.alleles = {}   # alleles and their coverage, sorted by coverage from high to low
         self.indels = {}
-
-    # load coverage from cdb print line
-    def load_cdb(self, rec):
-        alt = {}
-        for i in range(0, 4):
-            cov = int(rec[i])
-            self.cov += cov
-            if cov > 0: alt[ACGT[i]] = cov
-        if self.cov == 0: return
-        self.alleles = sorted(alt.iteritems(), key=lambda (k,v):(v,k), reverse=True)
 
     # load coverage from samtools pileup/mpileup
     def load_pileup(self, rec, refbase):
@@ -154,8 +142,6 @@ class SampleBase:
     def basecall(self, het_cov, het_purity):
         if self.cov == 0: return '.'
         if self.cov >= het_cov and self.purity() <= het_purity:
-#            minor_allele = self.alleles[1][0]
-#            minor_allele_perc = self.alleles[1][1]
             return "%s/%s" % (self.major, self.minor)
         else:
             return self.major
@@ -167,19 +153,6 @@ class SampleBase:
             if float(self.alleles[i][1])/float(self.cov) >= MIN_FREQ:
                 basecall += "/%s" % self.alleles[i][0]
         return basecall
-
-    def iupac(self):
-        basecall = self.basecall_all()
-        if len(basecall) == 1: return basecall
-        alleles = basecall.split('/')
-        return IUPACcode(alleles[0],alleles[1])
-
-#        if self.cov == 0: return '.'
-#        if self.cov >= het_cov and self.purity() <= het_purity: 
-#            if self.num_alleles() == 1:
-#                return self.alleles[0][0]
-#            return IUPACcode(self.alleles[0][0],self.alleles[1][0])
-#        return self.alleles[0][0]
 
     def is_snp(self, refbase, cov, purity):
         if self.cov == 0: return False
@@ -229,6 +202,9 @@ class SampleBase:
         outfile.write("\t%s" % self.cov)
         outfile.write("\t%.4f" % self.purity())
 
+    def value(self):
+        return [self.basecall_all(), str(self.cov), '%.4f'%self.purity()]
+        
     def write_indel(self, outfile, refbase, max_indel, indel_perc):
         if self.has_indel(): 
             indel = self.indels[0][0]
@@ -262,32 +238,29 @@ class SampleBase:
         outfile.write("\t%s,%s,%s,%s" % (acgt['A'],acgt['C'],acgt['G'],acgt['T']))
 
 
+
 # A class for one base pair, including reference information and
 # coverage infomration for a set of samples
 class BasePair:
-    def __init__(self):
+    def __init__(self, fields=None):
         self.seqid = ""
         self.pos = -1
         self.refbase = '.'
         self.samples = []
+        if fields: self.load(fields)
 
-    def load_ref(self, id, pos, ref):
-        self.seqid = id
-        self.pos = pos
-        self.refbase = ref
-
-    def load_samples_mpileup(self, rec):
+    def load_samples(self, rec):
         for i in range(0, len(rec), 3):
             base = SampleBase()
             base.load_pileup(rec[i:i+3],self.refbase)
             self.samples.append(base)
 
-    # input is the four-tuple of coverage
-    def load_samples_cdb(self, rec):
-        base = SampleBase()
-        base.load_cdb(rec)
-        self.samples.append(base)
-
+    def load(self, fields):
+        self.seqid = fields[0]
+        self.pos = int(fields[1])
+        self.refbase = fields[2]
+        self.load_samples(fields[3:])
+ 
     def num_samples(self):
         return len(self.samples)
 
@@ -331,10 +304,6 @@ class BasePair:
         if self.num_samples() == 0: return -1
         return self.samples[sample_id].purity()
 
-    def iupac(self, sample_id = 0):
-        if self.num_samples() == 0: return '.'
-        return self.samples[sample_id].iupac()
-
     def major_allele(self, sample_id = 0):
         if self.num_samples() == 0: return '.'
         return self.samples[sample_id].major_allele()
@@ -374,8 +343,11 @@ class BasePair:
     def write_pos(self, outfile):
         outfile.write("%s\t%s\t" % (self.seqid, self.pos))
 
-    def write(self, outfile, het_cov, het_purity):
-        self.write_snp(outfile, het_cov, het_purity)
+    def write(self, outfile, delimit):
+        value = [self.seqid,str(self.pos),'SNP',self.refbase]
+        for i in range(0, len(self.samples)):
+            value += self.samples[i].value()
+        outfile.write(delimit.join(value)+'\n')
 
     def write_snp(self, outfile, het_cov, het_purity):
         self.write_pos(outfile)
