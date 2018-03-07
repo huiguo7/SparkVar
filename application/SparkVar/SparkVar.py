@@ -304,12 +304,12 @@ def snp_call(aln_rdd, args, sam_files, ref, header, prefix):
             call("rm -f %s" % sam, shell=True)
         fid = (bam_files[0].split('.'))[-2]
         outfile = '/user/spark/warehouse/%s.%s.snp.txt' % (prefix, fid)
-        snpcall_cmd = "/mnt/call_variants.py -b %s -f %s -u %d -c %d -p %f --hets_cov %d --hets_purity %f --indel_cov %d --indel_purity %f --indel_perc %f"\
+        snpcall_cmd = "call_variants.py -b %s -f %s -u %d --min_cov %d --min_purity %f --hets_cov %d --hets_purity %f --indel_cov %d --indel_purity %f --indel_perc %f"\
         % (bam_files, ref, args['qual'], args['min_cov'], args['min_purity'], args['hets_cov'], args['hets_purity'], args['indel_cov'], args['indel_purity'], args['indel_perc'])
         if args['indel']: snpcall_cmd += " --indel"
         if args['hets']:  snpcall_cmd += " --hets"
         if args['vcf']:  snpcall_cmd += " --vcf"
-        if args['mpileup_param']: snpcall_cmd += " -a '%s'" % args['mpileup_param']
+        if args['mpileup_param']: snpcall_cmd += " --param '%s'" % args['mpileup_param']
         cmd = "%s | hadoop fs -put - %s" % (snpcall_cmd, outfile)
         call(cmd, shell=True)
         call("rm -f %s" % ' '.join(bam_files), shell=True)
@@ -346,12 +346,12 @@ def snp_call_pipe(aln_rdd, args, sam_files, ref, header, prefix):
     def call_snp(bam_files, ref):
         fid = ((bam_files.split(','))[0].split('.'))[-2]
         outfile = '/user/spark/warehouse/%s.%s.snp.txt' % (prefix, fid)
-        snpcall_cmd = "/mnt/call_variants.py -b %s -f %s -u %d -c %d -p %f --hets_cov %d --hets_purity %f --indel_cov %d --indel_purity %f --indel_perc %f"\
+        snpcall_cmd = "call_variants.py -b %s -f %s -u %d --min_cov %d --min_purity %f --hets_cov %d --hets_purity %f --indel_cov %d --indel_purity %f --indel_perc %f"\
         % (bam_files, ref, args['qual'], args['min_cov'], args['min_purity'], args['hets_cov'], args['hets_purity'], args['indel_cov'], args['indel_purity'], args['indel_perc'])
         if args['indel']: snpcall_cmd += " --indel"
         if args['hets']:  snpcall_cmd += " --hets"
         if args['vcf']:  snpcall_cmd += " --vcf"
-        if args['mpileup_param']: snpcall_cmd += " -a '%s'" % args['mpileup_param']
+        if args['mpileup_param']: snpcall_cmd += " --param '%s'" % args['mpileup_param']
         cmd = "%s | hadoop fs -put - %s" % (snpcall_cmd, outfile)
         call(cmd, shell=True)
         #call("rm -f %s" % ' '.join(bam_files), shell=True)
