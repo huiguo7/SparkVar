@@ -64,8 +64,8 @@ reference=$2
 bwt=$3
 
 # copy script to local
-sudo aws s3 cp ${app_path}application/SparkVar/ /mnt/ --recursive --exclude "*.sh"
-sudo chmod a+x /mnt/call_variants.py /mnt/fastaParser.py /mnt/fasta_extract
+sudo aws s3 cp ${app_path}application/SparkVar/ /usr/local/bin/ --recursive --exclude "*.sh"
+sudo chmod a+x /usr/local/bin/call_variants.py /usr/local/bin/fasta_extract
 sudo chmod 777 /mnt 
 
 # Download FASTA file
