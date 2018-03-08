@@ -12,7 +12,7 @@ sudo yum -y install yum-utils
 # install development tools, which allow you to build and compile software from source code
 sudo yum -y groupinstall development
 sudo yum -y install openssl openssl-devel
-sudo yum install -y gcc-c++ patch readline readline-devel zlib zlib-devel libyaml-devel libffi-devel openssl-devel make bzip2 autoconf automake libtool bison iconv-devel bzip2-devel-1.0.6-13.amzn2.x86_64 xz-devel-5.2.2-1.amzn2.x86_64
+sudo yum install -y gcc-c++ patch readline readline-devel zlib zlib-devel libyaml-devel libffi-devel openssl-devel make bzip2 autoconf automake libtool bison iconv-devel bzip2-devel-1.0.6-13.amzn2.x86_64 xz-devel-5.2.2-1.amzn2.x86_64 libcurl-devel
 
 # install python3 (amazon linux2)
 sudo amazon-linux-extras install python3
