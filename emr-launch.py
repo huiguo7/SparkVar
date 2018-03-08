@@ -109,6 +109,8 @@ def parse_args():
         help="Additional Amazon EC2 security group IDs for the slave nodes (delimited by ',' if multiple IDs were given). [None]")
     group3.add_argument("--ssh_key", metavar='STR', default=None,
         help="SSH key to use with master node. [None]")
+    group3.add_argument("--profile", metavar='STR', default=None,
+        help="Named profiles stored in the config and credentials files. [default]")
     group3.add_argument("--emr_cluster_name", metavar='STR', default="My Cluster",
         help="Name used to identify the EMR cluster. [My Cluster]")
     group3.add_argument("--job_flow_role", metavar='STR', default="EMR_EC2_DefaultRole",
@@ -277,7 +279,11 @@ def build_tags(args):
 # Function to set the Spark-Submit parameters based on the EC2 instance type and reference assembly
 def get_spark_parameters(args):
     # Get the total size of BT2 files associated with the reference assembly
-    session = boto3.Session(profile_name='nonprod')
+    if args['profile']:
+        session = boto3.Session(profile_name=args['profile'])
+    else:
+        session = boto3.Session() # use default profile
+    
     client = session.client('s3')
     
     r = client.list_objects_v2(Bucket=(args['bwt_s3_path'].split('/'))[2],
@@ -422,7 +428,11 @@ def main():
     print (' '.join(build_steps(args)[0]['HadoopJarStep']['Args']))
         
     # Build EMR cluster and initiate steps
-    session = boto3.Session(profile_name='nonprod')
+    if args['profile']:
+        session = boto3.Session(profile_name=args['profile'])
+    else:
+        session = boto3.Session() # use default named profile
+
     client = session.client('emr')
 
     kwargs = {'Applications' : build_applications(),
