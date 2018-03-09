@@ -2,7 +2,7 @@
 SparkVar is designed for swiftly processing large amounts of DNA sequencing data for read alignment and variant calling. SparkVar creates an EMR cluster in AWS to process sequencing data stored in S3.
 
 ### Prerequisites:
-1. An [AWS account](https://aws.amazon.com)
+1. An [AWS account](https://aws.amazon.com){:target="_blank"}
 2. [boto3](https://boto3.readthedocs.io/en/latest)
 3. [python3](https://www.python.org/downloads)
 
