@@ -17,7 +17,7 @@ def syscall(cmd, verbose):
     if verbose: sys.stderr.write('(%s) [%s] #cmd: %s\n' % (str(datetime.now()), PROGRAM_NAME, cmd))
     retval = os.system(cmd)
     if retval:
-        if verbose: sys.stderr.write('[%s] ERROR: system call failed: %s\n' % (PROGRAM_NAME, cmd))
+        stderr.write('[%s] ERROR: system call failed: %s\n' % (PROGRAM_NAME, cmd))
         sys.exit(1)
 
 
@@ -290,16 +290,43 @@ def snarp(samples, refasta, pos_file, mpileup_cmd, out_filename, delimit, verbos
 ########################################
 
 # get the union of variant coordinates list
-def vcf_union_snps(vcfs, outfile, call_hets, verbose):
-    tmp_file = "%s.tmp" % outfile
-    for i in range(0, len(vcfs)):
-        cmd = "cat %s | grep -v \"#\"" % vcfs[i]
-        if not call_hets: cmd += " | grep \"1/1\""
-        cmd += " >> %s" % tmp_file
-        syscall(cmd, verbose)
-    cmd = "cat %s | cut -f1,2 | sort | uniq > %s" % (tmp_file, outfile)
-    syscall(cmd, verbose)
-    os.remove(tmp_file)
+def vcf_union_snps(vcfs, pos_file, call_hets, verbose):
+#    tmp_file = "%s.tmp" % outfile
+#    for i in range(0, len(vcfs)):
+#        cmd = "cat %s | grep -v \"#\"" % vcfs[i]
+#        if not call_hets: cmd += " | grep \"1/1\""
+#        cmd += " >> %s" % tmp_file
+#        syscall(cmd, verbose)
+#    cmd = "cat %s | cut -f1,2 | sort | uniq > %s" % (tmp_file, outfile)
+#    syscall(cmd, verbose)
+#    os.remove(tmp_file)
+
+    if verbose: sys.stderr.write('(%s) [%s] vcf_union_snps(%s)\n' % (str(datetime.now()),PROGRAM_NAME,','.join(vcfs)))
+
+    # read in positions from each vcf
+    pos_list = {}
+    for vcf in vcfs:
+        infile = open(vcf, 'r')
+        for line in infile.readlines():
+            if line[0] != '#':
+                rec = line[:-1].split('\t')
+                seqid = rec[0]
+                coord = int(rec[1])
+                if call_hets or '1/1' in line: 
+                    if not seqid in pos_list: pos_list[seqid] = []
+                    pos_list[seqid].append(coord)
+        infile.close()
+
+    # write out positions to position list file
+    outfile = open(pos_file, 'w')
+    for seqid in pos_list:
+        pos_list[seqid].sort()
+        for coord in pos_list[seqid]:
+            outfile.write('%s\t%s\n' % (seqid, coord))
+    outfile.close()
+
+    return
+                
     
 
 # call variants by bcftool
